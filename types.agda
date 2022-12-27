@@ -19,6 +19,10 @@ W₂Ren : {n m : ℕ} {G : Ctx n} {D : Ctx m} {X : Subset n m}
   {T : Ty m} → Ren G D X → Ren (G ⊹ weakenTy X T) (D ⊹ T) (yes X)
 W₂Ren {T = T} σ = yes T σ
 
+idRen : {n : ℕ} {G : Ctx n} → Ren G G all-yes
+idRen {G = ∅} = done
+idRen {G = G ⊹ A} = W₂Ren idRen
+
 data Var : {n : ℕ} (G : Ctx n) (v : Subset n 1) (T : Ty n) → Set where
   𝑧𝑣 : {n : ℕ} {G : Ctx n} {T : Ty n} →
     Var (G ⊹ T) (yes all-no) (WTy T)
@@ -74,4 +78,26 @@ weakenVTy : {n m : ℕ} {X : Subset n m} {G : Ctx n} {D : Ctx m} {T : Ty m} →
 weakenVTy σ R-Ty = R-Ty
 weakenVTy σ (R-Π A B) = R-Π (weakenVTy σ A) (weakenVTy (W₂Ren σ) B)
 weakenVTy σ (R-El t) = R-El (weakenVTm σ t)
+
+W₁VTms : {n m : ℕ} {G : Ctx n} {D : Ctx m} {ES : Tms n m}
+  {T : Ty n} → VTms G ES D → VTms (G ⊹ T) (W₁Tms ES) D
+W₁VTms ! = !
+W₁VTms (σ ⊕ t) = W₁VTms σ ⊕ weakenVTm (W₁Ren idRen) t
+
+W₂VTms : {n m : ℕ} {G : Ctx n} {D : Ctx m} {ES : Tms n m}
+  {T : Ty m} → VTms G ES D → VTms (G ⊹ (T [ ES ]Ty)) (W₂Tms ES) (D ⊹ T)
+W₂VTms σ = W₁VTms σ ⊕ R-Var 𝑧𝑣
+
+deriveTm : {n m : ℕ} {G : Ctx n} {D : Ctx m}
+  {ES : Tms n m} {v : Subset m 1} {T : Ty m} →
+  VTms G ES D → Var D v T → VTm G (𝑧Vec (derive ES v)) (T [ ES ]Ty)
+deriveTm (σ ⊕ t) 𝑧𝑣 = t
+deriveTm (σ ⊕ t) (𝑠𝑣 v) = deriveTm σ v
+
+_[_]VTm : {n m : ℕ} {G : Ctx n} {D : Ctx m}
+  {ES : Tms n m} {E : Tm m} {T : Ty m} →
+  VTm D E T → VTms G ES D → VTm G (E [ ES ]Tm) (T [ ES ]Ty)
+R-Var v [ σ ]VTm = deriveTm σ v
+R-Lam t [ σ ]VTm = R-Lam (t [ W₂VTms σ ]VTm)
+R-App t s [ σ ]VTm = R-App (t [ σ ]VTm) (s [ σ ]VTm)
 

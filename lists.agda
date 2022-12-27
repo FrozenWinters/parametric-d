@@ -58,6 +58,11 @@ all-no-R done = refl
 all-no-R (yes X) = cong no (all-no-R X)
 all-no-R (no X) = cong no (all-no-R X)
 
+all-no-lem : {n : ℕ} (X : Subset n 0) →
+  X ≡ all-no
+all-no-lem done = refl
+all-no-lem (no X) = cong no (all-no-lem X)
+
 {-# REWRITE all-yes-L all-yes-R all-no-R #-}
 
 infixl 20 _⊕_
@@ -94,6 +99,11 @@ mapVec : {A : Set ℓ₁} {B : Set ℓ₂} {n : ℕ}
 mapVec {n = zero} f σ = !
 mapVec {n = suc n} f σ = mapVec f (πVec σ) ⊕ f (𝑧Vec σ)
 
+mapId : {A : Set ℓ} {n : ℕ} (σ : Vec A n) →
+  mapVec (λ x → x) σ ≡ σ
+mapId ! = refl
+mapId (σ ⊕ v) = cong (_⊕ v) (mapId σ)
+
 mapVec² : {A : Set ℓ₁} {B : Set ℓ₂} {C : Set ℓ₃} {n : ℕ}
   (g : B → C) (f : A → B) (σ : Vec A n) →
   mapVec g (mapVec f σ) ≡ mapVec (g ∘ f) σ
@@ -106,6 +116,8 @@ deriveMap : {A : Set ℓ₁} {B : Set ℓ₂} {n m : ℕ}
 deriveMap f σ done = refl
 deriveMap f σ (yes X) = cong (_⊕ f (𝑧Vec σ)) (deriveMap f (πVec σ) X)
 deriveMap f σ (no X) = deriveMap f (πVec σ) X
+
+{-# REWRITE derive² deriveId mapId mapVec² deriveMap #-}
 
 record 𝐶𝑡𝑥Alg ℓ₁ ℓ₂ : Set (lsuc ℓ₁ ⊔ lsuc ℓ₂) where
   constructor

@@ -30,6 +30,16 @@ WTm E = weakenTm (no all-yes) E
 WTy : {n : ℕ} → Ty n → Ty (suc n)
 WTy T = weakenTy (no all-yes) T
 
+weakenTmId : {n : ℕ} (E : Tm n) → weakenTm all-yes E ≡ E
+weakenTmId (V v) = refl
+weakenTmId (Lam E) = cong Lam (weakenTmId E)
+weakenTmId (App E F) = cong₂ App (weakenTmId E) (weakenTmId F)
+
+weakenTyId : {n : ℕ} (T : Ty n) → weakenTy all-yes T ≡ T
+weakenTyId 𝒰 = refl
+weakenTyId (El E) = cong El (weakenTmId E)
+weakenTyId (Π T S) = cong₂ Π (weakenTyId T) (weakenTyId S)
+
 weakenTm² : {n m k : ℕ} (X : Subset n m) (Y : Subset m k) (E : Tm k) →
   weakenTm X (weakenTm Y E) ≡ weakenTm (trans X Y) E
 weakenTm² X Y (V v) = cong V (trans-assoc X Y v)
@@ -43,29 +53,7 @@ weakenTy² X Y (El E) = cong El (weakenTm² X Y E)
 weakenTy² X Y (Π T S) =
   cong₂ Π (weakenTy² X Y T) (weakenTy² (yes X) (yes Y) S)
 
-WTmLem₁ : {n m : ℕ} (X : Subset n m) (E : Tm m) →
-  WTm (weakenTm X E) ≡ weakenTm (no X) E
-WTmLem₁ X E = weakenTm² (no all-yes) X E
-
-WTyLem₁ : {n m : ℕ} (X : Subset n m) (T : Ty m) →
-  weakenTy (no all-yes) (weakenTy X T) ≡ weakenTy (no X) T
-WTyLem₁ X T =
-  weakenTy² (no all-yes) X T
-    ∙ cong (λ Y → weakenTy (no Y) T) (all-yes-L X)
-
-{-# REWRITE WTyLem₁ #-}
-
-WTmLem₂ : {n m : ℕ} (X : Subset n m) (E : Tm m) →
-  weakenTm (yes X) (WTm E) ≡ weakenTm (no X) E
-WTmLem₂ X E = weakenTm² (yes X) (no all-yes) E
-
-WTyLem₂ : {n m : ℕ} (X : Subset n m) (T : Ty m) →
-  weakenTy (yes X) (WTy T) ≡ weakenTy (no X) T
-WTyLem₂ X T =
-  weakenTy² (yes X) (no all-yes) T
-    ∙ cong (λ X → weakenTy (no X) T) (all-yes-R X)
-
-{-# REWRITE WTyLem₂ #-}
+{-# REWRITE weakenTmId weakenTyId weakenTm² weakenTy² #-}
 
 Tms : ℕ → ℕ → Set
 Tms n m = Vec (Tm n) m
@@ -80,35 +68,154 @@ idTms : {n : ℕ} → Tms n n
 idTms {zero} = !
 idTms {suc n} = W₂Tms idTms
 
-_ᵣ∘_ : {n m k : ℕ} → Subset m k → Tms n m → Tms n k
-X ᵣ∘ σ = derive σ X
+_[_]Tm : {n m : ℕ} → Tm m → Tms n m → Tm n
+V v [ σ ]Tm = 𝑧Vec (derive σ v)
+Lam E [ σ ]Tm = Lam (E [ W₂Tms σ ]Tm)
+App E F [ σ ]Tm = App (E [ σ ]Tm) (F [ σ ]Tm)
 
-_∘ᵣ_ : {n m k : ℕ} → Tms m k → Subset n m → Tms n k
-σ ∘ᵣ X = mapVec (weakenTm X) σ
+_[_]Ty : {n m : ℕ} → Ty m → Tms n m → Ty n
+𝒰 [ σ ]Ty = 𝒰
+El E [ σ ]Ty = El (E [ σ ]Tm)
+Π T S [ σ ]Ty = Π (T [ σ ]Ty) (S [ W₂Tms σ ]Ty)
 
-W₁ᵣ∘ : {n m k : ℕ} (X : Subset m k) (σ : Tms n m) →
-  W₁Tms (X ᵣ∘ σ) ≡ X ᵣ∘ W₁Tms σ
+weaken[]Tm : {n m k : ℕ} (E : Tm k) (X : Subset m k) (σ : Tms n m) →
+  weakenTm X E [ σ ]Tm ≡ E [ derive σ X ]Tm
+weaken[]Tm (V v) X σ = refl
+weaken[]Tm (Lam E) X σ =
+  cong Lam (weaken[]Tm E (yes X) (W₂Tms σ))
+weaken[]Tm (App E F) X σ =
+  cong₂ App (weaken[]Tm E X σ) (weaken[]Tm F X σ)
+
+weaken[]Ty : {n m k : ℕ} (T : Ty k) (X : Subset m k) (σ : Tms n m) →
+  weakenTy X T [ σ ]Ty ≡ T [ derive σ X ]Ty
+weaken[]Ty 𝒰 X σ = refl
+weaken[]Ty (El E) X σ = cong El (weaken[]Tm E X σ)
+weaken[]Ty (Π T S) X σ =
+  cong₂ Π (weaken[]Ty T X σ) (weaken[]Ty S (yes X) (W₂Tms σ))
+
+[]weakenTm : {n m k : ℕ} (E : Tm k) (σ : Tms m k) (X : Subset n m) →
+  weakenTm X (E [ σ ]Tm) ≡ E [ mapVec (weakenTm X) σ ]Tm
+[]weakenTm (V v) σ X = refl
+[]weakenTm (Lam E) σ X =
+  cong Lam
+    ([]weakenTm E (W₂Tms σ) (yes X))
+[]weakenTm (App E F) σ X =
+  cong₂ App ([]weakenTm E σ X) ([]weakenTm F σ X)
+
+[]weakenTy : {n m k : ℕ} (T : Ty k) (σ : Tms m k) (X : Subset n m) →
+  weakenTy X (T [ σ ]Ty) ≡ T [ mapVec (weakenTm X) σ ]Ty
+[]weakenTy 𝒰 σ X = refl
+[]weakenTy (El E) σ X = cong El ([]weakenTm E σ X)
+[]weakenTy (Π T S) σ X =
+  cong₂ Π
+    ([]weakenTy T σ X)
+    ([]weakenTy S (W₂Tms σ) (yes X))
+
+{-# REWRITE weaken[]Tm weaken[]Ty []weakenTm []weakenTy #-}
+
+
+
+{-idLem₂ : {n m : ℕ} (σ : Tms n m) →
+  mapVec (weakenTm all-yes) σ ≡ σ
+idLem₂ ! = refl
+idLem₂ (σ ⊕ t) = cong (_⊕ t) (idLem₂ σ)-}
+
+
+_∘Tm_ : {n m k : ℕ} → Tms m k → Tms n m → Tms n k
+σ ∘Tm τ = mapVec _[ τ ]Tm σ
+
+[][]Tm : {n m k : ℕ} (E : Tm k) (σ : Tms m k) (τ : Tms n m) →
+  E [ σ ]Tm [ τ ]Tm ≡ E [ σ ∘Tm τ ]Tm
+[][]Tm (V v) σ τ = refl
+[][]Tm (Lam E) σ τ = cong Lam ([][]Tm E (W₂Tms σ) (W₂Tms τ))
+[][]Tm (App E F) σ τ = cong₂ App ([][]Tm E σ τ) ([][]Tm F σ τ)
+
+[][]Ty : {n m k : ℕ} (T : Ty k) (σ : Tms m k) (τ : Tms n m) →
+  T [ σ ]Ty [ τ ]Ty ≡ T [ σ ∘Tm τ ]Ty
+[][]Ty 𝒰 σ τ = refl
+[][]Ty (El E) σ τ = cong El ([][]Tm E σ τ)
+[][]Ty (Π T S) σ τ = cong₂ Π ([][]Ty T σ τ) ([][]Ty S (W₂Tms σ) (W₂Tms τ))
+
+{-# REWRITE [][]Tm [][]Ty #-}
+
+idLem₁ : {n m : ℕ} (X : Subset n m) →
+  derive idTms X ≡ mapVec (weakenTm X) idTms
+idLem₁ done = refl
+idLem₁ (yes X) = cong (_⊕ V (yes all-no)) (idLem₁ (no X))
+idLem₁ (no X) = cong W₁Tms (idLem₁ X)
+
+{-# REWRITE idLem₁ #-}
+
+idLem₂ : {n m : ℕ} (σ : Tms n m) →
+  mapVec _[ σ ]Tm idTms ≡ σ
+idLem₂ ! = refl
+idLem₂ (σ ⊕ E) = cong (_⊕ E) (idLem₂ σ)
+
+idLem₃Var : {n : ℕ} (v : Subset n 1) →
+  V v [ idTms ]Tm ≡ V v
+idLem₃Var (yes X) = cong (V ∘ yes) (sym (all-no-lem X))
+idLem₃Var (no v) = cong (V ∘ no) (all-yes-R v)
+
+idLem₃ : {n : ℕ} (E : Tm n) →
+  E [ idTms ]Tm ≡ E
+idLem₃ (V v) = idLem₃Var v
+idLem₃ (Lam E) = cong Lam (idLem₃ E)
+idLem₃ (App E F) = cong₂ App (idLem₃ E) (idLem₃ F)
+
+idLem₄ : {n m : ℕ} (σ : Tms n m) →
+  mapVec _[ idTms ]Tm σ ≡ σ
+idLem₄ ! = refl
+idLem₄ (σ ⊕ E) = cong₂ _⊕_ (idLem₄ σ) (idLem₃ E)
+
+{-# REWRITE idLem₂ idLem₃ idLem₄ #-}
+
+{-idLem₂ : {n m : ℕ} (σ : Tms n m) →
+  mapVec _[ σ ]Tm idTms ≡ mapVec _[ idTms ]Tm σ
+idLem₂ ! = refl
+idLem₂ (σ ⊕ E) = {!!}-}
+
+{-switchLem₁ X 𝒰 E = refl
+switchLem₁ X (El F) E = {!!}
+switchLem₁ X (Π T S) E =
+  cong₂ Π
+    (switchLem₁ X T E)
+    {!switchLem₁ (yes X) S !}-}
+
+{-idLem₁ : {n m : ℕ} (X : Subset n m) →
+  mapVec (weakenTm X) idTms ≡ derive idTms X
+idLem₁ done = refl
+idLem₁ (yes X) = cong (_⊕ V (yes all-no)) (idLem₁ (no X))
+idLem₁ (no X) = {!!}-}
+
+{-W₁∘ᵣ : {n m k : ℕ} (σ : Tms m k) (X : Subset n m) →
+  mapVec WTm (σ ∘ᵣ X) ≡ σ ∘ᵣ no X
+W₁∘ᵣ ! X = refl
+W₁∘ᵣ (σ ⊕ E) X = cong (_⊕ weakenTm (no X) E) (W₁∘ᵣ σ X)
+
+W₁∘ᵣ' : {n m k : ℕ} (σ : Tms m k) (X : Subset n m) →
+  mapVec (weakenTm (yes X)) (W₁Tms σ) ≡ σ ∘ᵣ no X
+W₁∘ᵣ' ! X = refl
+W₁∘ᵣ' (σ ⊕ E) X = cong (_⊕ weakenTm (no X) E) (W₁∘ᵣ' σ X)-}
+
+
+
+{-W₁ᵣ∘ : {n m k : ℕ} (X : Subset m k) (σ : Tms n m) →
+  mapVec WTm (X ᵣ∘ σ) ≡ X ᵣ∘ W₁Tms σ
 W₁ᵣ∘ done σ = refl
 W₁ᵣ∘ (yes X) σ = cong (_⊕ WTm (𝑧Vec σ)) (W₁ᵣ∘ X (πVec σ))
 W₁ᵣ∘ (no X) σ = W₁ᵣ∘ X (πVec σ)
 
-W₂ᵣ∘ : {n m k : ℕ} (X : Subset m k) (σ : Tms n m) →
-  W₂Tms (X ᵣ∘ σ) ≡ yes X ᵣ∘ W₂Tms σ
-W₂ᵣ∘ X σ = cong (_⊕ V (yes all-no)) (W₁ᵣ∘ X σ)
-
 W₁∘ᵣ : {n m k : ℕ} (σ : Tms m k) (X : Subset n m) →
-  W₁Tms (σ ∘ᵣ X) ≡ σ ∘ᵣ no X
+  mapVec WTm (σ ∘ᵣ X) ≡ σ ∘ᵣ no X
 W₁∘ᵣ ! X = refl
-W₁∘ᵣ (σ ⊕ E) X = cong₂ _⊕_ (W₁∘ᵣ σ X) (WTmLem₁ X E)
+W₁∘ᵣ (σ ⊕ E) X = cong (_⊕ weakenTm (no X) E) (W₁∘ᵣ σ X)
 
 W₁∘ᵣ' : {n m k : ℕ} (σ : Tms m k) (X : Subset n m) →
-  W₁Tms σ ∘ᵣ yes X ≡ σ ∘ᵣ no X
+  mapVec (weakenTm (yes X)) (W₁Tms σ) ≡ σ ∘ᵣ no X
 W₁∘ᵣ' ! X = refl
-W₁∘ᵣ' (σ ⊕ E) X = cong₂ _⊕_ (W₁∘ᵣ' σ X) (WTmLem₂ X E)
+W₁∘ᵣ' (σ ⊕ E) X = cong (_⊕ weakenTm (no X) E) (W₁∘ᵣ' σ X)
 
-W₂∘ᵣ : {n m k : ℕ} (σ : Tms m k) (X : Subset n m) →
-  W₂Tms (σ ∘ᵣ X) ≡ W₂Tms σ ∘ᵣ yes X
-W₂∘ᵣ σ X = cong (_⊕ V (yes all-no)) (W₁∘ᵣ σ X ∙ sym (W₁∘ᵣ' σ X))
+{-# REWRITE W₁ᵣ∘ W₁∘ᵣ W₁∘ᵣ' #-}
 
 _[_]Tm : {n m : ℕ} → Tm m → Tms n m → Tm n
 V v [ σ ]Tm = 𝑧Vec (derive σ v)
@@ -124,9 +231,7 @@ weaken[]Tm : {n m k : ℕ} (E : Tm k) (X : Subset m k) (σ : Tms n m) →
   weakenTm X E [ σ ]Tm ≡ E [ X ᵣ∘ σ ]Tm
 weaken[]Tm (V v) X σ = cong 𝑧Vec (sym (derive² σ X v))
 weaken[]Tm (Lam E) X σ =
-  cong Lam
-    (weaken[]Tm E (yes X) (W₂Tms σ)
-      ∙ cong (E [_]Tm) (sym (W₂ᵣ∘ X σ)))
+  cong Lam (weaken[]Tm E (yes X) (W₂Tms σ))
 weaken[]Tm (App E F) X σ =
   cong₂ App (weaken[]Tm E X σ) (weaken[]Tm F X σ)
 
@@ -137,16 +242,14 @@ weaken[]Ty (El E) X σ = cong El (weaken[]Tm E X σ)
 weaken[]Ty (Π T S) X σ =
   cong₂ Π
     (weaken[]Ty T X σ)
-    (weaken[]Ty S (yes X) (W₂Tms σ)
-      ∙ cong (S [_]Ty) (sym (W₂ᵣ∘ X σ)))
+    (weaken[]Ty S (yes X) (W₂Tms σ))
 
 []weakenTm : {n m k : ℕ} (E : Tm k) (σ : Tms m k) (X : Subset n m) →
   weakenTm X (E [ σ ]Tm) ≡ E [ σ ∘ᵣ X ]Tm
 []weakenTm (V v) σ X = cong 𝑧Vec (sym (deriveMap (weakenTm X) σ v))
 []weakenTm (Lam E) σ X =
   cong Lam
-    ([]weakenTm E (W₂Tms σ) (yes X)
-      ∙ cong (E [_]Tm) (sym (W₂∘ᵣ σ X)))
+    ([]weakenTm E (W₂Tms σ) (yes X))
 []weakenTm (App E F) σ X =
   cong₂ App ([]weakenTm E σ X) ([]weakenTm F σ X)
 
@@ -157,22 +260,32 @@ weaken[]Ty (Π T S) X σ =
 []weakenTy (Π T S) σ X =
   cong₂ Π
     ([]weakenTy T σ X)
-    ([]weakenTy S (W₂Tms σ) (yes X)
-      ∙ cong (S [_]Ty) (sym (W₂∘ᵣ σ X)))
+    ([]weakenTy S (W₂Tms σ) (yes X))-}
 
-idLem₁ : {n m : ℕ} (X : Subset n m) → X ᵣ∘ idTms ≡ idTms ∘ᵣ X
-idLem₁ done = refl
-idLem₁ (yes X) =
-  sym (W₂ᵣ∘ X idTms) ∙ cong W₂Tms (idLem₁ X) ∙ W₂∘ᵣ idTms X
-idLem₁ (no X) =
-  sym (W₁ᵣ∘ X idTms) ∙ cong W₁Tms (idLem₁ X) ∙ W₁∘ᵣ idTms X
-
-switchLem₁ : {n m : ℕ} (X : Subset n m) (T : Ty (suc m)) (E : Tm m) →
+{-switchLem₁ : {n m : ℕ} (X : Subset n m) (T : Ty (suc m)) (E : Tm m) →
   weakenTy (yes X) T [ idTms ⊕ weakenTm X E ]Ty
     ≡ weakenTy X (T [ idTms ⊕ E ]Ty)
-switchLem₁ X T E =
-  weaken[]Ty T (yes X) (idTms ⊕ weakenTm X E)
-    ∙ cong (λ σ → T [ σ ⊕ weakenTm X E ]Ty) (idLem₁ X)
-    ∙ sym ([]weakenTy T (idTms ⊕ E) X)
+switchLem₁ X 𝒰 E = refl
+switchLem₁ X (El F) E = {!!}
+switchLem₁ X (Π T S) E =
+  cong₂ Π
+    (switchLem₁ X T E)
+    {!switchLem₁ (yes X) S !}-}
 
-{-# REWRITE switchLem₁ #-}
+{-idLem₁ : {n m : ℕ} (X : Subset n m) →
+  idTms ∘ᵣ X ≡ derive idTms X
+idLem₁ done = refl
+idLem₁ (yes X) = cong (_⊕ V (yes all-no)) (idLem₁ (no X))
+idLem₁ (no X) = {!cong W₁Tms (idLem₁ X)!}-}
+
+{-idLem₂ : {n m : ℕ} (σ : Tms n m) →
+  mapVec (weakenTm all-yes) σ ≡ all-yes ᵣ∘ σ
+idLem₂ ! = refl
+idLem₂ (σ ⊕ E) = cong₂ _⊕_ (idLem₂ σ) (weakenTmId E)
+
+πLemTy : {n m : ℕ} (σ : Tms n m) →
+  mapVec (weakenTm (no all-yes)) σ ≡ no all-yes ᵣ∘ W₂Tms σ
+πLemTy σ =
+  sym (W₁∘ᵣ σ all-yes) ∙ cong W₁Tms (idLem₂ σ) ∙ W₁ᵣ∘ all-yes σ-}
+
+--{-# REWRITE weaken[]Ty []weakenTy idLem₁ πLemTy #-}
