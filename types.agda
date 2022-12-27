@@ -1,4 +1,4 @@
-{-# OPTIONS --without-K #-}
+{-# OPTIONS --without-K --rewriting #-}
 
 module types where
 
@@ -19,11 +19,18 @@ W₂Ren : {n m : ℕ} {G : Ctx n} {D : Ctx m} {X : Subset n m}
   {T : Ty m} → Ren G D X → Ren (G ⊹ weakenTy X T) (D ⊹ T) (yes X)
 W₂Ren {T = T} σ = yes T σ
 
-data Var : {n : ℕ} (G : Ctx n) (m : Subset n 1) (T : Ty n) → Set where
+data Var : {n : ℕ} (G : Ctx n) (v : Subset n 1) (T : Ty n) → Set where
   𝑧𝑣 : {n : ℕ} {G : Ctx n} {T : Ty n} →
     Var (G ⊹ T) (yes all-no) (WTy T)
   𝑠𝑣 : {n : ℕ} {G : Ctx n} {T S : Ty n} {v : Subset n 1} →
     Var G v S → Var (G ⊹ T) (no v) (WTy S)
+
+deriveVar : {n m : ℕ} {G : Ctx n} {D : Ctx m}
+  {X : Subset n m} {v : Subset m 1} {T : Ty m} →
+  Ren G D X → Var D v T → Var G (trans X v) (weakenTy X T)
+deriveVar (yes A σ) 𝑧𝑣 = {!𝑧𝑣!}
+deriveVar (yes A σ) (𝑠𝑣 v) = {!𝑠𝑣 (deriveVar σ v)!}
+deriveVar (no A σ) v = {!𝑠𝑣 (deriveVar σ v)!}
 
 data VCtx : {n : ℕ} → Ctx n → Set
 data VTms : {n m : ℕ} → Ctx n → Tms n m → Ctx m → Set
@@ -58,9 +65,9 @@ data VTm where
 weakenVTm : {n m : ℕ} {X : Subset n m}
   {G : Ctx n} {D : Ctx m} {E : Tm m} {T : Ty m} →
   Ren G D X → VTm D E T → VTm G (weakenTm X E) (weakenTy X T)
-weakenVTm σ (R-Var v) = {!!}
+weakenVTm σ (R-Var v) = R-Var (deriveVar σ v)
 weakenVTm σ (R-Lam t) = R-Lam (weakenVTm (W₂Ren σ) t)
-weakenVTm σ (R-App t s) = {!R-App (weakenVTm σ t) (weakenVTm σ s)!}
+weakenVTm σ (R-App t s) = R-App (weakenVTm σ t) (weakenVTm σ s)
 
 weakenVTy : {n m : ℕ} {X : Subset n m} {G : Ctx n} {D : Ctx m} {T : Ty m} →
   Ren G D X → VTy D T → VTy G (weakenTy X T)
