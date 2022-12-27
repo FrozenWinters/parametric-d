@@ -100,4 +100,3 @@ _[_]VTm : {n m : ℕ} {G : Ctx n} {D : Ctx m}
 R-Var v [ σ ]VTm = deriveTm σ v
 R-Lam t [ σ ]VTm = R-Lam (t [ W₂VTms σ ]VTm)
 R-App t s [ σ ]VTm = R-App (t [ σ ]VTm) (s [ σ ]VTm)
-

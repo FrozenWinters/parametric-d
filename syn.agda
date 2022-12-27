@@ -159,4 +159,7 @@ idLem₄ : {n m : ℕ} (σ : Tms n m) →
 idLem₄ ! = refl
 idLem₄ (σ ⊕ E) = cong₂ _⊕_ (idLem₄ σ) (idLem₃ E)
 
+{-idLem₅ : {n m : ℕ} (X : Subset n m) →
+  mapVec (weakenTm X) idTms ≡ {!!}-}
+
 {-# REWRITE idLem₂ idLem₃ idLem₄ #-}
