@@ -4,8 +4,6 @@ module syn where
 
 open import lists
 
-{-# BUILTIN REWRITE _≡_ #-}
-
 data Tm : ℕ → Set where
   V : {n : ℕ} → Subset n 1 → Tm n
   Lam : {n : ℕ} → Tm (suc n) → Tm n
@@ -38,36 +36,36 @@ weakenTm² X Y (V v) = cong V (trans-assoc X Y v)
 weakenTm² X Y (Lam E) = cong Lam (weakenTm² (yes X) (yes Y) E)
 weakenTm² X Y (App E F) = cong₂ App (weakenTm² X Y E) (weakenTm² X Y F)
 
-{-weakenTy² : {n m k : ℕ} (X : Subset n m) (Y : Subset m k) (T : Ty k) →
+weakenTy² : {n m k : ℕ} (X : Subset n m) (Y : Subset m k) (T : Ty k) →
   weakenTy X (weakenTy Y T) ≡ weakenTy (trans X Y) T
 weakenTy² X Y 𝒰 = refl
 weakenTy² X Y (El E) = cong El (weakenTm² X Y E)
 weakenTy² X Y (Π T S) =
-  cong₂ Π (weakenTy² X Y T) (weakenTy² (yes X) (yes Y) S)-}
+  cong₂ Π (weakenTy² X Y T) (weakenTy² (yes X) (yes Y) S)
 
 WTmLem₁ : {n m : ℕ} (X : Subset n m) (E : Tm m) →
   WTm (weakenTm X E) ≡ weakenTm (no X) E
-WTmLem₁ X E =
-  weakenTm² (no all-yes) X E
-    ∙ cong (λ Y → weakenTm (no Y) E) (all-yes-L X)
+WTmLem₁ X E = weakenTm² (no all-yes) X E
 
-{-WTyLem₁ : {n m : ℕ} (X : Subset n m) (T : Ty m) →
-  WTy (weakenTy X T) ≡ weakenTy (no X) T
+WTyLem₁ : {n m : ℕ} (X : Subset n m) (T : Ty m) →
+  weakenTy (no all-yes) (weakenTy X T) ≡ weakenTy (no X) T
 WTyLem₁ X T =
   weakenTy² (no all-yes) X T
-    ∙ cong (λ Y → weakenTy (no Y) T) (all-yes-L X)-}
+    ∙ cong (λ Y → weakenTy (no Y) T) (all-yes-L X)
+
+{-# REWRITE WTyLem₁ #-}
 
 WTmLem₂ : {n m : ℕ} (X : Subset n m) (E : Tm m) →
   weakenTm (yes X) (WTm E) ≡ weakenTm (no X) E
-WTmLem₂ X E =
-  weakenTm² (yes X) (no all-yes) E
-    ∙ cong (λ X → weakenTm (no X) E) (all-yes-R X)
+WTmLem₂ X E = weakenTm² (yes X) (no all-yes) E
 
-{-WTyLem₂ : {n m : ℕ} (X : Subset n m) (T : Ty m) →
+WTyLem₂ : {n m : ℕ} (X : Subset n m) (T : Ty m) →
   weakenTy (yes X) (WTy T) ≡ weakenTy (no X) T
 WTyLem₂ X T =
   weakenTy² (yes X) (no all-yes) T
-    ∙ cong (λ X → weakenTy (no X) T) (all-yes-R X)-}
+    ∙ cong (λ X → weakenTy (no X) T) (all-yes-R X)
+
+{-# REWRITE WTyLem₂ #-}
 
 Tms : ℕ → ℕ → Set
 Tms n m = Vec (Tm n) m
@@ -110,9 +108,7 @@ W₁∘ᵣ' (σ ⊕ E) X = cong₂ _⊕_ (W₁∘ᵣ' σ X) (WTmLem₂ X E)
 
 W₂∘ᵣ : {n m k : ℕ} (σ : Tms m k) (X : Subset n m) →
   W₂Tms (σ ∘ᵣ X) ≡ W₂Tms σ ∘ᵣ yes X
-W₂∘ᵣ σ X =
-  cong₂ _⊕_
-    (W₁∘ᵣ σ X ∙ sym (W₁∘ᵣ' σ X)) (cong (V ∘ yes) (sym (all-no-R X)))
+W₂∘ᵣ σ X = cong (_⊕ V (yes all-no)) (W₁∘ᵣ σ X ∙ sym (W₁∘ᵣ' σ X))
 
 _[_]Tm : {n m : ℕ} → Tm m → Tms n m → Tm n
 V v [ σ ]Tm = 𝑧Vec (derive σ v)

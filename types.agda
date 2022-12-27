@@ -28,9 +28,9 @@ data Var : {n : ℕ} (G : Ctx n) (v : Subset n 1) (T : Ty n) → Set where
 deriveVar : {n m : ℕ} {G : Ctx n} {D : Ctx m}
   {X : Subset n m} {v : Subset m 1} {T : Ty m} →
   Ren G D X → Var D v T → Var G (trans X v) (weakenTy X T)
-deriveVar (yes A σ) 𝑧𝑣 = {!𝑧𝑣!}
-deriveVar (yes A σ) (𝑠𝑣 v) = {!𝑠𝑣 (deriveVar σ v)!}
-deriveVar (no A σ) v = {!𝑠𝑣 (deriveVar σ v)!}
+deriveVar (yes A σ) 𝑧𝑣 = 𝑧𝑣 
+deriveVar (yes A σ) (𝑠𝑣 v) = 𝑠𝑣 (deriveVar σ v)
+deriveVar (no A σ) v = 𝑠𝑣 (deriveVar σ v)
 
 data VCtx : {n : ℕ} → Ctx n → Set
 data VTms : {n m : ℕ} → Ctx n → Tms n m → Ctx m → Set

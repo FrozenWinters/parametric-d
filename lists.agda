@@ -1,4 +1,4 @@
-{-# OPTIONS --without-K #-}
+{-# OPTIONS --without-K --rewriting #-}
 
 module lists where
 
@@ -8,6 +8,8 @@ open import Relation.Binary.PropositionalEquality
 open ≡-Reasoning public
 open import Function public
 open import Data.Nat hiding (_⊔_) public
+
+{-# BUILTIN REWRITE _≡_ #-}
 
 private
   variable
@@ -55,6 +57,8 @@ all-no-R : {n m : ℕ} (X : Subset n m) → trans X all-no ≡ all-no
 all-no-R done = refl
 all-no-R (yes X) = cong no (all-no-R X)
 all-no-R (no X) = cong no (all-no-R X)
+
+{-# REWRITE all-yes-L all-yes-R all-no-R #-}
 
 infixl 20 _⊕_
 data Vec (A : Set ℓ) : ℕ → Set ℓ where
