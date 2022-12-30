@@ -79,6 +79,10 @@ weakenVTy σ R-Ty = R-Ty
 weakenVTy σ (R-Π A B) = R-Π (weakenVTy σ A) (weakenVTy (W₂Ren σ) B)
 weakenVTy σ (R-El t) = R-El (weakenVTm σ t)
 
+WVTy : {n : ℕ} {G : Ctx n} {D : Ctx n} {T S : Ty n} →
+  VTy G T → VTy (G ⊹ S) (WTy T)
+WVTy A = weakenVTy (W₁Ren idRen) A
+
 W₁VTms : {n m : ℕ} {G : Ctx n} {D : Ctx m} {ES : Tms n m}
   {T : Ty n} → VTms G ES D → VTms (G ⊹ T) (W₁Tms ES) D
 W₁VTms ! = !
@@ -87,6 +91,10 @@ W₁VTms (σ ⊕ t) = W₁VTms σ ⊕ weakenVTm (W₁Ren idRen) t
 W₂VTms : {n m : ℕ} {G : Ctx n} {D : Ctx m} {ES : Tms n m}
   {T : Ty m} → VTms G ES D → VTms (G ⊹ (T [ ES ]Ty)) (W₂Tms ES) (D ⊹ T)
 W₂VTms σ = W₁VTms σ ⊕ R-Var 𝑧𝑣
+
+idVTms : {n : ℕ} {G : Ctx n} → VTms G idTms G
+idVTms {G = ∅} = !
+idVTms {G = G ⊹ A} = W₂VTms idVTms
 
 deriveTm : {n m : ℕ} {G : Ctx n} {D : Ctx m}
   {ES : Tms n m} {v : Subset m 1} {T : Ty m} →
@@ -100,3 +108,10 @@ _[_]VTm : {n m : ℕ} {G : Ctx n} {D : Ctx m}
 R-Var v [ σ ]VTm = deriveTm σ v
 R-Lam t [ σ ]VTm = R-Lam (t [ W₂VTms σ ]VTm)
 R-App t s [ σ ]VTm = R-App (t [ σ ]VTm) (s [ σ ]VTm)
+
+_[_]VTy : {n m : ℕ} {G : Ctx n} {D : Ctx m}
+  {ES : Tms n m} {T : Ty m} →
+  VTy D T → VTms G ES D → VTy G (T [ ES ]Ty)
+R-Ty [ σ ]VTy = R-Ty
+R-Π A B [ σ ]VTy = R-Π (A [ σ ]VTy) (B [ W₂VTms σ ]VTy)
+R-El t [ σ ]VTy = R-El (t [ σ ]VTm)

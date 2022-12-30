@@ -58,12 +58,16 @@ all-no-R done = refl
 all-no-R (yes X) = cong no (all-no-R X)
 all-no-R (no X) = cong no (all-no-R X)
 
+-- Unfolded for rewriting
+all-no-R' : {n : ℕ} (X : Subset n zero) → trans X done ≡ all-no
+all-no-R' X = all-no-R X
+
 all-no-lem : {n : ℕ} (X : Subset n 0) →
   X ≡ all-no
 all-no-lem done = refl
 all-no-lem (no X) = cong no (all-no-lem X)
 
-{-# REWRITE all-yes-L all-yes-R all-no-R #-}
+{-# REWRITE all-yes-L all-yes-R all-no-R all-no-R' #-}
 
 infixl 20 _⊕_
 data Vec (A : Set ℓ) : ℕ → Set ℓ where
